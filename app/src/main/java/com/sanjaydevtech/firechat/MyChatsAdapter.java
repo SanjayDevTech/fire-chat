@@ -5,22 +5,28 @@ import android.content.DialogInterface;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.sanjaydevtech.firechat.databinding.ListChatsItemBinding;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
-public class MyChatsAdapter extends RecyclerView.Adapter<MyChatsAdapter.MyViewHolder>{
+public class MyChatsAdapter extends RecyclerView.Adapter<MyChatsAdapter.MyViewHolder> {
 
     private Context context;
     private ArrayList<Chats> chats;
+    private String Uid = FirebaseAuth.getInstance().getUid();
 
     public MyChatsAdapter(Context context, ArrayList<Chats> chats) {
         this.context = context;
@@ -43,38 +49,79 @@ public class MyChatsAdapter extends RecyclerView.Adapter<MyChatsAdapter.MyViewHo
 
     @Override
     public void onBindViewHolder(@NonNull MyViewHolder holder, final int position) {
-        holder.binding.msgTxt.setText(chats.get(position).getMsg());
+
+        if (chats.get(position).getUid().equals(Uid)) {
+            holder.binding.receiverLayout.setVisibility(View.GONE);
+            holder.binding.sendMsgTxt.setText(chats.get(position).getMsg());
+        } else {
+            holder.binding.senderLayout.setVisibility(View.GONE);
+            holder.binding.msgTxt.setText(chats.get(position).getMsg());
+        }
+
         holder.binding.baseLayout.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
-                AlertDialog dialog = new AlertDialog.Builder(context)
-                        .setMessage("Edit or Delete Message")
-                        .setPositiveButton("Delete", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                DatabaseReference ref = FirebaseDatabase.getInstance()
-                                        .getReference("chats").child(chats.get(position).getKey());
-                                ref.removeValue();
-                            }
-                        })
-                        .setNeutralButton("Edit", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                // Here launch another dialog to edit....
+                if (chats.get(position).getUid().equals(Uid)) {
+                    AlertDialog dialog = new AlertDialog.Builder(context)
+                            .setMessage("Edit or Delete Message")
+                            .setPositiveButton("Delete", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    DatabaseReference ref = FirebaseDatabase.getInstance()
+                                            .getReference("chats").child(chats.get(position).getKey());
+                                    ref.removeValue();
+                                }
+                            })
+                            .setNegativeButton("Edit", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    dialog.dismiss();
+                                    dialogAlertForEdit(context, position);
+                                }
+                            })
+                            .setNeutralButton("Nope", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    dialog.dismiss();
+                                }
+                            }).create();
+                    dialog.show();
+                    return true;
+                } else {
+                    return false;
+                }
 
-                                // We will do that in next tutorial
-                            }
-                        })
-                        .setNegativeButton("Nope", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                dialog.dismiss();
-                            }
-                        }).create();
-                        dialog.show();
-                return true;
             }
         });
+    }
+
+    private void dialogAlertForEdit(final Context context, final int position) {
+        AlertDialog.Builder dialog = new AlertDialog.Builder(context)
+                .setMessage("Edit Message");
+        final EditText editMsgTxt = new EditText(context);
+        editMsgTxt.setHint("Edit Msg");
+        editMsgTxt.setText(chats.get(position).getMsg());
+        editMsgTxt.setImeOptions(EditorInfo.IME_ACTION_DONE);
+        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT);
+        editMsgTxt.setLayoutParams(layoutParams);
+        dialog.setView(editMsgTxt);
+        dialog.setPositiveButton("Update", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                DatabaseReference ref = FirebaseDatabase.getInstance()
+                        .getReference("chats").child(chats.get(position).getKey());
+                // Or we can do that in another way
+                ref.child("msg").setValue(editMsgTxt.getText().toString());
+            }
+        })
+                .setNeutralButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                }).create();
+        dialog.show();
     }
 
     @Override
