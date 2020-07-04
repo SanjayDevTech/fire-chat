@@ -69,7 +69,6 @@ public class MainActivity extends AppCompatActivity {
                         newChats.add(chats);
                     }
                     adapter.setChats(newChats);
-                    adapter.notifyDataSetChanged();
 
                 } catch (Exception e) {
                     e.printStackTrace();
