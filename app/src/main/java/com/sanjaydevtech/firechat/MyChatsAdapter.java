@@ -14,13 +14,15 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 import com.sanjaydevtech.firechat.databinding.ListChatsItemBinding;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 
 public class MyChatsAdapter extends RecyclerView.Adapter<MyChatsAdapter.MyViewHolder> {
 
@@ -50,25 +52,47 @@ public class MyChatsAdapter extends RecyclerView.Adapter<MyChatsAdapter.MyViewHo
     @Override
     public void onBindViewHolder(@NonNull MyViewHolder holder, final int position) {
 
-        if (chats.get(position).getUid().equals(Uid)) {
+        final Chats currentChat = chats.get(position);
+
+        if (currentChat.getUid().equals(Uid)) {
             holder.binding.receiverLayout.setVisibility(View.GONE);
-            holder.binding.sendMsgTxt.setText(chats.get(position).getMsg());
+            holder.binding.sendMsgTxt.setText(currentChat.getMsg());
+            if (currentChat.getImg() == null) {
+                holder.binding.senderImg.setVisibility(View.GONE);
+            } else {
+                Glide.with(context)
+                        .load(currentChat.getImg())
+                        .into(holder.binding.senderImg);
+                // display the image
+            }
         } else {
             holder.binding.senderLayout.setVisibility(View.GONE);
-            holder.binding.msgTxt.setText(chats.get(position).getMsg());
+            holder.binding.msgTxt.setText(currentChat.getMsg());
+            if (currentChat.getImg() == null) {
+                holder.binding.receiverImg.setVisibility(View.GONE);
+            } else {
+                // display the image
+                Glide.with(context)
+                        .load(currentChat.getImg())
+                        .into(holder.binding.receiverImg);
+            }
         }
 
         holder.binding.baseLayout.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
-                if (chats.get(position).getUid().equals(Uid)) {
+                if (currentChat.getUid().equals(Uid)) {
                     AlertDialog dialog = new AlertDialog.Builder(context)
                             .setMessage("Edit or Delete Message")
                             .setPositiveButton("Delete", new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface dialog, int which) {
+                                    if (currentChat.getImg() != null) {
+                                        StorageReference ref = FirebaseStorage.getInstance().getReferenceFromUrl(currentChat.getImg());
+                                        ref.delete();
+                                    }
                                     DatabaseReference ref = FirebaseDatabase.getInstance()
-                                            .getReference("chats").child(chats.get(position).getKey());
+                                            .getReference("chats").child(currentChat.getKey());
                                     ref.removeValue();
                                 }
                             })
